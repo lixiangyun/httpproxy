@@ -9,7 +9,10 @@ import (
 
 var HTTP_PROXY string = ":808"
 
-type proxy struct{}
+type HttpProxy struct {
+	Server string
+	Addr   string
+}
 
 // CopyHeaders copy headers from source to destination.
 // Nothing would be returned.
@@ -42,7 +45,7 @@ func RmProxyHeaders(req *http.Request) {
 	req.Header.Del("Upgrade")
 }
 
-func (*proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+func (h *HttpProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	fmt.Printf("Received request %s %s %s\n", req.Method, req.Host, req.RemoteAddr)
 
@@ -51,16 +54,11 @@ func (*proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// step 1
 	RmProxyHeaders(req)
 
-	servername := req.Header.Get("ServerName")
-	if servername != "" {
-		req.Header.Del("ServerName")
-		fmt.Println("ServerName : ", servername)
-		req.Host = servername
+	req.Host = h.Server
 
-		req.RequestURI = "http://" + servername + "/" + req.URL.Path
+	req.RequestURI = "http://" + h.Server + "/" + req.URL.Path
 
-		req.URL, _ = url.Parse(req.RequestURI)
-	}
+	req.URL, _ = url.Parse(req.RequestURI)
 
 	// step 2
 	resp, err := http.DefaultTransport.RoundTrip(req)
@@ -86,5 +84,10 @@ func (*proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	http.ListenAndServe(HTTP_PROXY, &proxy{})
+
+	proxy := new(HttpProxy)
+	proxy.Addr = HTTP_PROXY
+	proxy.Server = "www.baidu.com"
+
+	http.ListenAndServe(proxy.Addr, proxy)
 }
