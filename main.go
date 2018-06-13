@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 var HTTP_PROXY string = ":808"
@@ -55,5 +57,26 @@ func main() {
 	proxy.Addr = HTTP_PROXY
 	proxy.Server = "www.baidu.com"
 
-	http.ListenAndServe(proxy.Addr, proxy)
+	for {
+
+		fmt.Println("start listen ", proxy.Addr)
+
+		lis, err := net.Listen("tcp", proxy.Addr)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		svr := http.Server{Handler: proxy}
+
+		go svr.Serve(lis)
+
+		time.Sleep(3 * time.Second)
+
+		err = svr.Close()
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		time.Sleep(3 * time.Second)
+	}
 }
