@@ -80,12 +80,15 @@ func main() {
 
 	args := os.Args
 
-	if len(args) != 2 {
+	if len(args) != 3 {
 		fmt.Println("usage : <Listen Addr> <Redirect Addr>")
 		return
 	}
 
-	proxy := NewHttpProcy(HTTP_PROXY, "www.126.com")
+	fmt.Printf("Listen   At [%s]\r\n", args[1])
+	fmt.Printf("Redirect To [%s]\r\n", args[2])
+
+	proxy := NewHttpProcy(args[1], args[2])
 	if proxy == nil {
 		return
 	}
