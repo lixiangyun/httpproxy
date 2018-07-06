@@ -3,40 +3,50 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"time"
+
+	"github.com/lixiangyun/go-mesh/mesher/comm"
 )
 
-var HTTP_PROXY string = ":808"
+type SELECT_ADDR func() string
 
 type HttpProxy struct {
-	Server string
-	Addr   string
-	Svc    *http.Server
+	Fun  SELECT_ADDR
+	Addr string
+	Svc  *http.Server
 }
 
 func (h *HttpProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
-	//fmt.Printf("Received request %s %s %s\n", req.Method, req.Host, req.RemoteAddr)
+	defer req.Body.Close()
 
-	//fmt.Println(req.URL.Path)
+	redirect := h.Fun()
 
 	// step 1
-	req.Host = h.Server
-	req.RequestURI = "http://" + h.Server + "/" + req.URL.Path
+	path := "http://" + redirect + "/" + req.URL.Path
 
-	req.URL, _ = url.Parse(req.RequestURI)
+	request, err := http.NewRequest(req.Method, path, req.Body)
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for key, value := range req.Header {
+		for _, v := range value {
+			request.Header.Add(key, v)
+		}
+	}
 
 	// step 2
-	resp, err := http.DefaultTransport.RoundTrip(req)
+	resp, err := comm.HttpClient.Do(request)
 	if err != nil {
-
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
-
 		return
 	}
 	defer resp.Body.Close()
@@ -50,20 +60,21 @@ func (h *HttpProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	rw.WriteHeader(resp.StatusCode)
 	io.Copy(rw, resp.Body)
-	resp.Body.Close()
 }
 
-func NewHttpProcy(addr string, servername string) *HttpProxy {
+func NewHttpProxy(addr string, fun SELECT_ADDR) *HttpProxy {
 	proxy := new(HttpProxy)
 
 	proxy.Addr = addr
-	proxy.Server = servername
+	proxy.Fun = fun
 
 	lis, err := net.Listen("tcp", proxy.Addr)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println("http listen failed!", err.Error())
 		return nil
 	}
+
+	log.Printf("Http Proxy Listen : %s\r\n", addr)
 
 	proxy.Svc = &http.Server{Handler: proxy}
 
@@ -76,6 +87,11 @@ func (h *HttpProxy) Close() {
 	h.Svc.Close()
 }
 
+var gServerAddr string
+
+func GetServerAddr() string {
+	return gServerAddr
+}
 func main() {
 
 	args := os.Args
@@ -88,7 +104,9 @@ func main() {
 	fmt.Printf("Listen   At [%s]\r\n", args[1])
 	fmt.Printf("Redirect To [%s]\r\n", args[2])
 
-	proxy := NewHttpProcy(args[1], args[2])
+	gServerAddr = args[2]
+
+	proxy := NewHttpProxy(args[1], GetServerAddr)
 	if proxy == nil {
 		return
 	}
