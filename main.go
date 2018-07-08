@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/lixiangyun/go-mesh/mesher/comm"
@@ -87,11 +88,15 @@ func (h *HttpProxy) Close() {
 	h.Svc.Close()
 }
 
-var gServerAddr string
+var gServerAddr []string
+var gIndex int
 
 func GetServerAddr() string {
-	return gServerAddr
+	idx := gIndex % len(gServerAddr)
+	gIndex++
+	return gServerAddr[idx]
 }
+
 func main() {
 
 	args := os.Args
@@ -104,7 +109,7 @@ func main() {
 	fmt.Printf("Listen   At [%s]\r\n", args[1])
 	fmt.Printf("Redirect To [%s]\r\n", args[2])
 
-	gServerAddr = args[2]
+	gServerAddr = strings.Split(args[2], ";")
 
 	proxy := NewHttpProxy(args[1], GetServerAddr)
 	if proxy == nil {
