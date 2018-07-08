@@ -44,7 +44,7 @@ func (h *HttpProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// step 2
-	resp, err := comm.HttpClient.Do(request)
+	resp, err := comm.HttpClient(redirect).Do(request)
 	if err != nil {
 		log.Println(err.Error())
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
