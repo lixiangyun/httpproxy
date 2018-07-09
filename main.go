@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 
 	"io/ioutil"
 	"log"
@@ -68,10 +69,7 @@ func newhttpclient() *http.Client {
 
 func (h *HttpProxy) Process() {
 	defer h.Wait.Done()
-
 	httpclient := newhttpclient()
-
-	log.Println("start process...")
 
 	for {
 		select {
@@ -184,7 +182,7 @@ func NewHttpProxy(addr string, fun SELECT_ADDR) *HttpProxy {
 		return nil
 	}
 
-	log.Printf("Http Proxy Listen : %s\r\n", addr)
+	log.Printf("Http Proxy Listen %s\r\n", addr)
 
 	proxy.Svc = &http.Server{Handler: proxy}
 
@@ -203,6 +201,9 @@ func NewHttpProxy(addr string, fun SELECT_ADDR) *HttpProxy {
 }
 
 func (h *HttpProxy) Close() {
+
+	log.Println("Http Proxy Shut Down!", h.Addr)
+
 	h.Svc.Close()
 	for i := 0; i < h.GoCnt; i++ {
 		h.Stop <- struct{}{}
@@ -223,22 +224,29 @@ func main() {
 
 	args := os.Args
 
-	if len(args) != 3 {
-		fmt.Println("usage : <Listen Addr> <Redirect Addr>")
+	if len(args) != 4 {
+		fmt.Println("usage : <Listen Addr> <Redirect Addr> <RunTime>")
 		return
 	}
 
 	fmt.Printf("Listen   At [%s]\r\n", args[1])
 	fmt.Printf("Redirect To [%s]\r\n", args[2])
+	fmt.Printf("RunTime     [%s]Sec\r\n", args[3])
 
 	gServerAddr = strings.Split(args[2], ";")
+
+	runtime, err := strconv.Atoi(args[3])
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 
 	proxy := NewHttpProxy(args[1], GetServerAddr)
 	if proxy == nil {
 		return
 	}
 
-	for {
+	for i := 0; i < runtime; i++ {
 		time.Sleep(1 * time.Second)
 	}
 
