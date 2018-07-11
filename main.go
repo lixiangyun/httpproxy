@@ -2,14 +2,14 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
-	"strconv"
 
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"os"
+
 	"strings"
 	"sync"
 	"time"
@@ -48,14 +48,14 @@ type HttpRequest struct {
 func newTransport() http.RoundTripper {
 	return &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout:   5 * time.Second,
-			KeepAlive: 15 * time.Second,
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
 			DualStack: true,
 		}).DialContext,
-		MaxIdleConnsPerHost:   10,
-		MaxIdleConns:          10,
-		IdleConnTimeout:       5 * time.Second,
-		TLSHandshakeTimeout:   5 * time.Second,
+		MaxIdleConnsPerHost:   100,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       30 * time.Second,
+		TLSHandshakeTimeout:   30 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 }
@@ -186,8 +186,8 @@ func NewHttpProxy(addr string, fun SELECT_ADDR) *HttpProxy {
 
 	proxy.Svc = &http.Server{Handler: proxy}
 
-	proxy.GoCnt = 10
-	proxy.Que = make(chan *HttpRequest, 100)
+	proxy.GoCnt = 100
+	proxy.Que = make(chan *HttpRequest, 1000)
 	proxy.Stop = make(chan struct{}, proxy.GoCnt)
 
 	proxy.Wait.Add(proxy.GoCnt)
@@ -220,34 +220,53 @@ func GetServerAddr() string {
 	return gServerAddr[idx]
 }
 
+var (
+	LISTEN_ADDR   string
+	REDIRECt_ADDR string
+	RUNTIME       int
+
+	help bool
+)
+
+func init() {
+	flag.StringVar(&LISTEN_ADDR, "in", "", "listen addr by http proxy.")
+	flag.StringVar(&REDIRECt_ADDR, "out", "", "http proxy redirect to addr.")
+	flag.IntVar(&RUNTIME, "time", 0, "http proxy run time.")
+
+	flag.BoolVar(&help, "h", false, "this help.")
+}
+
 func main() {
 
-	args := os.Args
+	flag.Parse()
 
-	if len(args) != 4 {
-		fmt.Println("usage : <Listen Addr> <Redirect Addr> <RunTime>")
+	if help || LISTEN_ADDR == "" || REDIRECt_ADDR == "" {
+		flag.Usage()
 		return
 	}
 
-	fmt.Printf("Listen   At [%s]\r\n", args[1])
-	fmt.Printf("Redirect To [%s]\r\n", args[2])
-	fmt.Printf("RunTime     [%s]Sec\r\n", args[3])
+	fmt.Printf("Listen   At [%s]\r\n", LISTEN_ADDR)
+	fmt.Printf("Redirect To [%s]\r\n", REDIRECt_ADDR)
 
-	gServerAddr = strings.Split(args[2], ";")
-
-	runtime, err := strconv.Atoi(args[3])
-	if err != nil {
-		fmt.Println(err.Error())
-		return
+	if RUNTIME > 0 {
+		fmt.Printf("RunTime     [%s]Sec\r\n", RUNTIME)
 	}
 
-	proxy := NewHttpProxy(args[1], GetServerAddr)
+	gServerAddr = strings.Split(REDIRECt_ADDR, ";")
+
+	proxy := NewHttpProxy(LISTEN_ADDR, GetServerAddr)
 	if proxy == nil {
 		return
 	}
 
-	for i := 0; i < runtime; i++ {
-		time.Sleep(1 * time.Second)
+	if RUNTIME > 0 {
+		for i := 0; i < RUNTIME; i++ {
+			time.Sleep(1 * time.Second)
+		}
+	} else {
+		for {
+			time.Sleep(1000 * time.Second)
+		}
 	}
 
 	proxy.Close()
