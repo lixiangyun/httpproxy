@@ -134,10 +134,14 @@ func (h *HttpProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	redirect := h.Fun()
 
+	if DEBUG {
+		log.Printf("Request : %v \r\n", req)
+	}
+
 	// step 1
 	proxyreq := new(HttpRequest)
 	proxyreq.addr = redirect
-	proxyreq.url = "http://" + redirect + "/" + req.URL.Path
+	proxyreq.url = "http://" + redirect + req.URL.RequestURI()
 	proxyreq.method = req.Method
 	proxyreq.header = req.Header
 	proxyreq.rsp = make(chan *HttpRsponse, 1)
@@ -149,8 +153,16 @@ func (h *HttpProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if DEBUG {
+		log.Printf("RequestProxy : %v \r\n", proxyreq)
+	}
+
 	h.Que <- proxyreq
 	proxyrsp := <-proxyreq.rsp
+
+	if DEBUG {
+		log.Printf("nResponse : %v \r\n", proxyrsp)
+	}
 
 	// step 2
 	if proxyrsp.err != nil {
@@ -224,14 +236,15 @@ var (
 	LISTEN_ADDR   string
 	REDIRECt_ADDR string
 	RUNTIME       int
-
-	help bool
+	DEBUG         bool
+	help          bool
 )
 
 func init() {
 	flag.StringVar(&LISTEN_ADDR, "in", "", "listen addr by http proxy.")
 	flag.StringVar(&REDIRECt_ADDR, "out", "", "http proxy redirect to addr.")
 	flag.IntVar(&RUNTIME, "time", 0, "http proxy run time.")
+	flag.BoolVar(&DEBUG, "debug", false, "debug mode.")
 
 	flag.BoolVar(&help, "h", false, "this help.")
 }
@@ -268,6 +281,5 @@ func main() {
 			time.Sleep(1000 * time.Second)
 		}
 	}
-
 	proxy.Close()
 }
