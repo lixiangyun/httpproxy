@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"sync/atomic"
 
 	"io/ioutil"
 	"log"
@@ -36,7 +37,10 @@ type HttpRsponse struct {
 	err error
 }
 
+var requestNum int32
+
 type HttpRequest struct {
+	num    int32
 	addr   string
 	url    string
 	method string
@@ -134,12 +138,9 @@ func (h *HttpProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	redirect := h.Fun()
 
-	if DEBUG {
-		log.Printf("Request : %v \r\n", req)
-	}
-
 	// step 1
 	proxyreq := new(HttpRequest)
+	proxyreq.num = atomic.AddInt32(&requestNum, 1)
 	proxyreq.addr = redirect
 	proxyreq.url = "http://" + redirect + req.URL.RequestURI()
 	proxyreq.method = req.Method
@@ -154,14 +155,32 @@ func (h *HttpProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if DEBUG {
-		log.Printf("RequestProxy : %v \r\n", proxyreq)
+		headers := fmt.Sprintf("\r\nHeader:\r\n")
+		for key, value := range proxyreq.header {
+			headers += fmt.Sprintf("\t%s:%v\r\n", key, value)
+		}
+		var body string
+		if len(proxyreq.body) > 0 {
+			body = fmt.Sprintf("Body:%s\r\n", string(proxyreq.body))
+		}
+		log.Printf("[%d]Request Method:%s\r\nURL:%s%s%s\r\n",
+			proxyreq.num, proxyreq.method, proxyreq.url, headers, body)
 	}
 
 	h.Que <- proxyreq
 	proxyrsp := <-proxyreq.rsp
 
 	if DEBUG {
-		log.Printf("nResponse : %v \r\n", proxyrsp)
+		headers := fmt.Sprintf("\r\nHeader:\r\n")
+		for key, value := range proxyrsp.header {
+			headers += fmt.Sprintf("\t%s:%v\r\n", key, value)
+		}
+		var body string
+		if len(proxyrsp.body) > 0 {
+			body = fmt.Sprintf("Body:%s\r\n", string(proxyrsp.body))
+		}
+		log.Printf("[%d]Response Code:%d%s%s\r\n",
+			proxyreq.num, proxyrsp.status, headers, body)
 	}
 
 	// step 2
@@ -213,9 +232,7 @@ func NewHttpProxy(addr string, fun SELECT_ADDR) *HttpProxy {
 }
 
 func (h *HttpProxy) Close() {
-
 	log.Println("Http Proxy Shut Down!", h.Addr)
-
 	h.Svc.Close()
 	for i := 0; i < h.GoCnt; i++ {
 		h.Stop <- struct{}{}
@@ -245,7 +262,6 @@ func init() {
 	flag.StringVar(&REDIRECt_ADDR, "out", "", "http proxy redirect to addr.")
 	flag.IntVar(&RUNTIME, "time", 0, "http proxy run time.")
 	flag.BoolVar(&DEBUG, "debug", false, "debug mode.")
-
 	flag.BoolVar(&help, "h", false, "this help.")
 }
 
@@ -258,11 +274,11 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Listen   At [%s]\r\n", LISTEN_ADDR)
-	fmt.Printf("Redirect To [%s]\r\n", REDIRECt_ADDR)
+	log.Printf("Listen   At [%s]\r\n", LISTEN_ADDR)
+	log.Printf("Redirect To [%s]\r\n", REDIRECt_ADDR)
 
 	if RUNTIME > 0 {
-		fmt.Printf("RunTime     [%s]Sec\r\n", RUNTIME)
+		log.Printf("RunTime     [%s]Sec\r\n", RUNTIME)
 	}
 
 	gServerAddr = strings.Split(REDIRECt_ADDR, ";")
