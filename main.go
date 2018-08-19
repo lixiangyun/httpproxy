@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"sync/atomic"
@@ -50,6 +51,13 @@ type HttpRequest struct {
 }
 
 func newTransport() http.RoundTripper {
+
+	var tlsconfig *tls.Config
+
+	if TLS_TYPE == "out" {
+		tlsconfig = TLS_CONFIG
+	}
+
 	return &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   10 * time.Second,
@@ -61,6 +69,7 @@ func newTransport() http.RoundTripper {
 		IdleConnTimeout:       30 * time.Second,
 		TLSHandshakeTimeout:   30 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       tlsconfig,
 	}
 }
 
@@ -215,7 +224,11 @@ func NewHttpProxy(addr string, fun SELECT_ADDR) *HttpProxy {
 
 	log.Printf("Http Proxy Listen %s\r\n", addr)
 
-	proxy.Svc = &http.Server{Handler: proxy}
+	if TLS_TYPE == "in" {
+		proxy.Svc = &http.Server{Handler: proxy, TLSConfig: TLS_CONFIG}
+	} else {
+		proxy.Svc = &http.Server{Handler: proxy}
+	}
 
 	proxy.GoCnt = 100
 	proxy.Que = make(chan *HttpRequest, 1000)
@@ -250,16 +263,29 @@ func GetServerAddr() string {
 }
 
 var (
+	TLS_CA_FILE   string
+	TLS_CERT_FILE string
+	TLS_KEY_FILE  string
+	TLS_TYPE      string
+
 	LISTEN_ADDR   string
 	REDIRECt_ADDR string
-	RUNTIME       int
-	DEBUG         bool
-	help          bool
+
+	RUNTIME int
+	DEBUG   bool
+	help    bool
+
+	TLS_CONFIG *tls.Config
 )
 
 func init() {
-	flag.StringVar(&LISTEN_ADDR, "in", "", "listen addr by http proxy.")
-	flag.StringVar(&REDIRECt_ADDR, "out", "", "http proxy redirect to addr.")
+	flag.StringVar(&TLS_CA_FILE, "ca", "", "CA certificate to verify peer against.")
+	flag.StringVar(&TLS_CERT_FILE, "cert", "", "certificate file.if [-tls] option been seted then required.")
+	flag.StringVar(&TLS_KEY_FILE, "key", "", "private key file name.if [-tls] option been seted then required.")
+	flag.StringVar(&TLS_TYPE, "tls", "", "the proxy channel enable https.[in/out]")
+
+	flag.StringVar(&LISTEN_ADDR, "in", "", "listen addr for http/https proxy.")
+	flag.StringVar(&REDIRECt_ADDR, "out", "", "redirect to addr for http/https proxy.")
 	flag.IntVar(&RUNTIME, "time", 0, "http proxy run time.")
 	flag.BoolVar(&DEBUG, "debug", false, "debug mode.")
 	flag.BoolVar(&help, "h", false, "this help.")
@@ -271,6 +297,30 @@ func main() {
 
 	if help || LISTEN_ADDR == "" || REDIRECt_ADDR == "" {
 		flag.Usage()
+		return
+	}
+
+	if TLS_TYPE != "" && TLS_TYPE != "in" && TLS_TYPE != "out" {
+		flag.Usage()
+		return
+	}
+
+	if TLS_TYPE != "" && (TLS_CERT_FILE == "" || TLS_KEY_FILE == "") {
+		flag.Usage()
+		return
+	}
+
+	var err error
+
+	if TLS_TYPE == "in" {
+		TLS_CONFIG, err = ServerTlsConfig(TLS_CA_FILE, TLS_CERT_FILE, TLS_KEY_FILE)
+	} else {
+		addlist := strings.Split(REDIRECt_ADDR, ":")
+		TLS_CONFIG, err = ClientTlsConfig(TLS_CA_FILE, TLS_CERT_FILE, TLS_KEY_FILE, addlist[0])
+	}
+
+	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 
