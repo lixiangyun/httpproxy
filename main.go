@@ -5,16 +5,16 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"sync/atomic"
-
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"golang.org/x/net/http2"
 )
 
 type SELECT_ADDR func() string
@@ -51,31 +51,27 @@ type HttpRequest struct {
 }
 
 func newTransport() http.RoundTripper {
+	return &http.Transport{}
+}
 
-	var tlsconfig *tls.Config
-
-	if TLS_TYPE == "out" {
-		tlsconfig = TLS_CONFIG
-	}
-
-	return &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout:   10 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		MaxIdleConnsPerHost:   100,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       30 * time.Second,
-		TLSHandshakeTimeout:   30 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig:       tlsconfig,
+func newTransport2() http.RoundTripper {
+	return &http2.Transport{
+		TLSClientConfig: TLS_CONFIG,
 	}
 }
 
 func newhttpclient() *http.Client {
+
+	var Transport http.RoundTripper
+
+	if TLS_TYPE == "out" {
+		Transport = newTransport2()
+	} else {
+		Transport = newTransport()
+	}
+
 	return &http.Client{
-		Transport: newTransport(),
+		Transport: Transport,
 		Timeout:   10 * time.Second,
 	}
 }
@@ -151,10 +147,15 @@ func (h *HttpProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	proxyreq := new(HttpRequest)
 	proxyreq.num = atomic.AddInt32(&requestNum, 1)
 	proxyreq.addr = redirect
-	proxyreq.url = "http://" + redirect + req.URL.RequestURI()
 	proxyreq.method = req.Method
 	proxyreq.header = req.Header
 	proxyreq.rsp = make(chan *HttpRsponse, 1)
+
+	if TLS_TYPE == "out" {
+		proxyreq.url = "https://" + redirect + req.URL.RequestURI()
+	} else {
+		proxyreq.url = "http://" + redirect + req.URL.RequestURI()
+	}
 
 	proxyreq.body, err = ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -225,9 +226,16 @@ func NewHttpProxy(addr string, fun SELECT_ADDR) *HttpProxy {
 	log.Printf("Http Proxy Listen %s\r\n", addr)
 
 	if TLS_TYPE == "in" {
-		proxy.Svc = &http.Server{Handler: proxy, TLSConfig: TLS_CONFIG}
+		proxy.Svc = &http.Server{
+			Handler:      proxy,
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			TLSConfig:    TLS_CONFIG}
 	} else {
-		proxy.Svc = &http.Server{Handler: proxy}
+		proxy.Svc = &http.Server{
+			Handler:      proxy,
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 10 * time.Second}
 	}
 
 	proxy.GoCnt = 100
@@ -239,7 +247,15 @@ func NewHttpProxy(addr string, fun SELECT_ADDR) *HttpProxy {
 		go proxy.Process()
 	}
 
-	go proxy.Svc.Serve(lis)
+	if TLS_TYPE == "in" {
+		if DEBUG {
+			http2.VerboseLogs = true
+		}
+		http2.ConfigureServer(proxy.Svc, &http2.Server{})
+		go proxy.Svc.ServeTLS(lis, "", "")
+	} else {
+		go proxy.Svc.Serve(lis)
+	}
 
 	return proxy
 }
@@ -314,7 +330,7 @@ func main() {
 
 	if TLS_TYPE == "in" {
 		TLS_CONFIG, err = ServerTlsConfig(TLS_CA_FILE, TLS_CERT_FILE, TLS_KEY_FILE)
-	} else {
+	} else if TLS_TYPE == "out" {
 		addlist := strings.Split(REDIRECt_ADDR, ":")
 		TLS_CONFIG, err = ClientTlsConfig(TLS_CA_FILE, TLS_CERT_FILE, TLS_KEY_FILE, addlist[0])
 	}
@@ -322,6 +338,10 @@ func main() {
 	if err != nil {
 		fmt.Println(err.Error())
 		return
+	}
+
+	if TLS_CONFIG != nil {
+		log.Println("Tls Enable : ", TLS_TYPE)
 	}
 
 	log.Printf("Listen   At [%s]\r\n", LISTEN_ADDR)

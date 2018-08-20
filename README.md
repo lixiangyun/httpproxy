@@ -44,7 +44,7 @@ httpproxy.exe -in 127.0.0.1:8080 -out "10.10.0.1:8080;10.10.0.2:8080"
 httpproxy.exe -in :8080 -out "127.0.0.1:8080;127.0.0.2:8080"
 ```
 
-## Tls Secure Channel Mode
+## Tls (default http2.0)
 ![](./tls_mode.png)
 
 - TLS out stream example:
