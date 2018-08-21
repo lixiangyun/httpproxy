@@ -1,0 +1,58 @@
+listeners:
+  - name: ingress
+    address: 127.0.0.1:8080
+    protocol: http1/http2/auto
+    router: 1234
+    tls: xxxx
+  - name: outgress
+    address: 127.0.0.1:8081
+    protocol: http1/http2/auto
+    router: 1234
+    tls: xxxx
+router:
+  - name: 1234
+    priority: 1
+    rule_type: prefix/path/regex
+    rule_value: xxxx
+    headers:
+      - key: abc
+        type: regex/prefix/equal
+        value: asdfasdf
+    clusters:
+      - servername: abc
+        weight: 80
+        version: 111
+      - servername: abc
+        weight: 20
+        version: 112
+    timeout: 5000
+    retry_policy:
+      retry_on: true
+      num_retries: 5
+      try_timeout: 1000
+clusters:
+  - servername: abc
+    version: 111
+    endpoints:
+    - 127.0.0.1:1234
+    - 127.0.0.1:1234
+    protocol: http1/http2/auto
+    tls: xxx
+    loadbalance: rr/random/hash/fast
+  - servername: abc
+    version: 112
+    endpoints:
+    - 127.0.0.1:1234
+    - 127.0.0.1:1234
+    loadbalance: rr/random/hash/fast
+    protocol: http1/http2/auto
+    tls: xxx
+tls:
+  - name: tls_client_ctx
+    cert_chain_file: ./cert/client.crt
+    private_key_file: ./cert/client.pem
+    ca_cert_file: ./cert/ca.crt
+  - name: tls_server_ctx
+    cert_chain_file: ./cert/server.crt
+    private_key_file: ./cert/server.pem
+    ca_cert_file: ./cert/ca.crt
