@@ -12,6 +12,6 @@ type ClusterCtl struct {
 	Tls TlsConfig
 }
 
-func ClusterCfgUpdate(list []ClusterDS) {
+func ClusterCfgUpdate(list []ClusterConfig) {
 
 }

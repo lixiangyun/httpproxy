@@ -2,14 +2,13 @@ package main
 
 import (
 	"io/ioutil"
-	"log"
 
 	"gopkg.in/yaml.v2"
 )
 
 type ProtoType string
 
-type Listerner struct {
+type ListernerConfig struct {
 	Name     string    `yaml:"name"`
 	Address  string    `yaml:address`
 	Protocal ProtoType `yaml:protocol`
@@ -39,7 +38,7 @@ type RetryPolicy struct {
 
 type LoadBalanceType string
 
-type ClusterDS struct {
+type ClusterConfig struct {
 	Name     string          `yaml:"servername"`
 	Version  string          `yaml:"version"`
 	Endpoint []string        `yaml:"endpoints"`
@@ -57,7 +56,7 @@ type TlsConfig struct {
 
 type RouterType string
 
-type Router struct {
+type RouterConfig struct {
 	Name  string     `yaml:"name"`
 	Prior int        `yaml:"priority"`
 	Type  RouterType `yaml:"rule_type"`
@@ -71,10 +70,10 @@ type Router struct {
 }
 
 type ConfigV1 struct {
-	Listeners []Listerner `yaml:"listeners"`
-	Routers   []Router    `yaml:"router"`
-	TlsCfg    []TlsConfig `yaml:"tls"`
-	Clusters  []ClusterDS `yaml:"clusters"`
+	Listeners []ListernerConfig `yaml:"listeners"`
+	Routers   []RouterConfig    `yaml:"router"`
+	TlsCfg    []TlsConfig       `yaml:"tls"`
+	Clusters  []ClusterConfig   `yaml:"clusters"`
 }
 
 var globalConfigV1 ConfigV1
@@ -95,15 +94,11 @@ func LoadConfig(filename string) error {
 }
 
 func init() {
+
 	globalConfigV1.Listeners = make([]Listerner, 0)
 	globalConfigV1.Routers = make([]Router, 0)
 	globalConfigV1.Clusters = make([]ClusterDS, 0)
 	globalConfigV1.TlsCfg = make([]TlsConfig, 0)
-
-	err := LoadConfig("./config.yaml")
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
 
 	//log.Println(globalConfigV1)
 }
