@@ -1,9 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
+	"time"
+
+	"golang.org/x/net/http2"
 )
 
 type HttpServer struct {
@@ -21,13 +30,74 @@ type HttpServer struct {
 	Stop  chan struct{}
 }
 
+func (h *HttpServer) Process() {
+	defer h.Wait.Done()
+
+	//httpclient := newhttpclient()
+
+	for {
+		select {
+		case proxyreq := <-h.Que:
+			{
+				proxyrsp := new(HttpRsponse)
+
+				request, err := http.NewRequest(proxyreq.method,
+					proxyreq.url,
+					bytes.NewBuffer(proxyreq.body))
+				if err != nil {
+					proxyrsp.err = err
+					proxyrsp.status = http.StatusInternalServerError
+
+					proxyreq.rsp <- proxyrsp
+					continue
+				}
+
+				for key, value := range proxyreq.header {
+					for _, v := range value {
+						request.Header.Add(key, v)
+					}
+				}
+
+				resp, err := httpclient.Do(request)
+				if err != nil {
+					proxyrsp.err = err
+					proxyrsp.status = http.StatusInternalServerError
+
+					proxyreq.rsp <- proxyrsp
+					continue
+				} else {
+					proxyrsp.status = resp.StatusCode
+					proxyrsp.header = resp.Header
+				}
+
+				proxyrsp.body, err = ioutil.ReadAll(resp.Body)
+				if err != nil {
+					proxyrsp.err = err
+					proxyrsp.status = http.StatusInternalServerError
+
+					proxyreq.rsp <- proxyrsp
+					continue
+				}
+				resp.Body.Close()
+
+				proxyreq.rsp <- proxyrsp
+			}
+		case <-h.Stop:
+			{
+				return
+			}
+		}
+	}
+}
+
 func (h *HttpServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	var err error
 
 	defer req.Body.Close()
 
-	redirect := h.Fun()
+	//redirect := h.Fun()
+	var redirect string
 
 	// step 1
 	proxyreq := new(HttpRequest)
@@ -37,11 +107,7 @@ func (h *HttpServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	proxyreq.header = req.Header
 	proxyreq.rsp = make(chan *HttpRsponse, 1)
 
-	if TLS_TYPE == "out" {
-		proxyreq.url = "https://" + redirect + req.URL.RequestURI()
-	} else {
-		proxyreq.url = "http://" + redirect + req.URL.RequestURI()
-	}
+	proxyreq.url = redirect + req.URL.RequestURI() // need + "https://"
 
 	proxyreq.body, err = ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -97,13 +163,11 @@ func (h *HttpServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(proxyrsp.body)
 }
 
-func NewHttpServer(Listerner []ListernerConfig) *HttpServer {
+func NewHttpServer(addr string, protc ProtoType, tls string) *HttpServer {
 	proxy := new(HttpServer)
+	proxy.Address = addr
 
-	proxy.Addr = addr
-	proxy.Fun = fun
-
-	lis, err := net.Listen("tcp", proxy.Addr)
+	lis, err := net.Listen("tcp", proxy.Address)
 	if err != nil {
 		log.Println("http listen failed!", err.Error())
 		return nil
@@ -111,43 +175,33 @@ func NewHttpServer(Listerner []ListernerConfig) *HttpServer {
 
 	log.Printf("Http Proxy Listen %s\r\n", addr)
 
-	if TLS_TYPE == "in" {
-		proxy.Svc = &http.Server{
-			Handler:      proxy,
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 10 * time.Second,
-			TLSConfig:    TLS_CONFIG}
+	tlsconfig, err := TlsConfigServerGet(tls)
+	if err != nil {
+		log.Println(err.Error())
+		return nil
+	}
+
+	proxy.Svc = &http.Server{
+		Handler:      proxy,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		TLSConfig:    tlsconfig}
+
+	if protc == PROTO_HTTP {
+		go proxy.Svc.Serve(lis)
 	} else {
-		proxy.Svc = &http.Server{
-			Handler:      proxy,
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 10 * time.Second}
-	}
-
-	proxy.GoCnt = 100
-	proxy.Que = make(chan *HttpRequest, 1000)
-	proxy.Stop = make(chan struct{}, proxy.GoCnt)
-
-	proxy.Wait.Add(proxy.GoCnt)
-	for i := 0; i < proxy.GoCnt; i++ {
-		go proxy.Process()
-	}
-
-	if TLS_TYPE == "in" {
 		if DEBUG {
 			http2.VerboseLogs = true
 		}
 		http2.ConfigureServer(proxy.Svc, &http2.Server{})
 		go proxy.Svc.ServeTLS(lis, "", "")
-	} else {
-		go proxy.Svc.Serve(lis)
 	}
 
 	return proxy
 }
 
-func (h *HttpProxy) Close() {
-	log.Println("Http Proxy Shut Down!", h.Addr)
+func (h *HttpServer) Close() {
+	log.Println("Http Proxy Shut Down!", h.Address)
 	h.Svc.Close()
 	for i := 0; i < h.GoCnt; i++ {
 		h.Stop <- struct{}{}

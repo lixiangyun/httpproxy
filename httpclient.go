@@ -38,28 +38,23 @@ type HttpClient interface {
 	Do(ctx context.Context, req *http.Request) (*http.Response, error)
 }
 
-func newTransport11() http.RoundTripper {
-	return &http.Transport{}
-}
+func NewHttpClient(server string, protc ProtoType, tls string) *http.Client {
 
-func newTransport20() http.RoundTripper {
-	return &http2.Transport{
-		TLSClientConfig: TLS_CONFIG,
+	var transport http.RoundTripper
+
+	tlsconfig, err := TlsConfigClientGet(tls, server)
+	if err != nil {
+		return nil
 	}
-}
 
-func newhttpclientxxx() *http.Client {
-
-	var Transport http.RoundTripper
-
-	if TLS_TYPE == "out" {
-		Transport = newTransport2()
+	if protc == PROTO_HTTP {
+		transport = &http.Transport{TLSClientConfig: tlsconfig}
 	} else {
-		Transport = newTransport()
+		transport = &http2.Transport{TLSClientConfig: tlsconfig}
 	}
 
 	return &http.Client{
-		Transport: Transport,
+		Transport: transport,
 		Timeout:   10 * time.Second,
 	}
 }

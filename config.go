@@ -8,6 +8,12 @@ import (
 
 type ProtoType string
 
+const (
+	PROTO_HTTP  = "http"
+	PROTO_HTTP2 = "http2"
+	PROTO_AUTO  = "auto"
+)
+
 type ListernerConfig struct {
 	Name     string    `yaml:"name"`
 	Address  string    `yaml:address`
@@ -95,9 +101,9 @@ func LoadConfig(filename string) error {
 
 func init() {
 
-	globalConfigV1.Listeners = make([]Listerner, 0)
-	globalConfigV1.Routers = make([]Router, 0)
-	globalConfigV1.Clusters = make([]ClusterDS, 0)
+	globalConfigV1.Listeners = make([]ListernerConfig, 0)
+	globalConfigV1.Routers = make([]RouterConfig, 0)
+	globalConfigV1.Clusters = make([]ClusterConfig, 0)
 	globalConfigV1.TlsCfg = make([]TlsConfig, 0)
 
 	//log.Println(globalConfigV1)
