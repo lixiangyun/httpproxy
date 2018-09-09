@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	//	"bytes"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
@@ -35,59 +35,63 @@ func (h *HttpServer) Process() {
 
 	//httpclient := newhttpclient()
 
-	for {
-		select {
-		case proxyreq := <-h.Que:
-			{
-				proxyrsp := new(HttpRsponse)
+	/*
 
-				request, err := http.NewRequest(proxyreq.method,
-					proxyreq.url,
-					bytes.NewBuffer(proxyreq.body))
-				if err != nil {
-					proxyrsp.err = err
-					proxyrsp.status = http.StatusInternalServerError
+		for {
+			select {
+			case proxyreq := <-h.Que:
+				{
+					proxyrsp := new(HttpRsponse)
 
-					proxyreq.rsp <- proxyrsp
-					continue
-				}
+					request, err := http.NewRequest(proxyreq.method,
+						proxyreq.url,
+						bytes.NewBuffer(proxyreq.body))
+					if err != nil {
+						proxyrsp.err = err
+						proxyrsp.status = http.StatusInternalServerError
 
-				for key, value := range proxyreq.header {
-					for _, v := range value {
-						request.Header.Add(key, v)
+						proxyreq.rsp <- proxyrsp
+						continue
 					}
-				}
 
-				resp, err := httpclient.Do(request)
-				if err != nil {
-					proxyrsp.err = err
-					proxyrsp.status = http.StatusInternalServerError
+					for key, value := range proxyreq.header {
+						for _, v := range value {
+							request.Header.Add(key, v)
+						}
+					}
+
+					resp, err := httpclient.Do(request)
+					if err != nil {
+						proxyrsp.err = err
+						proxyrsp.status = http.StatusInternalServerError
+
+						proxyreq.rsp <- proxyrsp
+						continue
+					} else {
+						proxyrsp.status = resp.StatusCode
+						proxyrsp.header = resp.Header
+					}
+
+					proxyrsp.body, err = ioutil.ReadAll(resp.Body)
+					if err != nil {
+						proxyrsp.err = err
+						proxyrsp.status = http.StatusInternalServerError
+
+						proxyreq.rsp <- proxyrsp
+						continue
+					}
+					resp.Body.Close()
 
 					proxyreq.rsp <- proxyrsp
-					continue
-				} else {
-					proxyrsp.status = resp.StatusCode
-					proxyrsp.header = resp.Header
 				}
-
-				proxyrsp.body, err = ioutil.ReadAll(resp.Body)
-				if err != nil {
-					proxyrsp.err = err
-					proxyrsp.status = http.StatusInternalServerError
-
-					proxyreq.rsp <- proxyrsp
-					continue
+			case <-h.Stop:
+				{
+					return
 				}
-				resp.Body.Close()
-
-				proxyreq.rsp <- proxyrsp
-			}
-		case <-h.Stop:
-			{
-				return
 			}
 		}
-	}
+
+	*/
 }
 
 func (h *HttpServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -163,7 +167,7 @@ func (h *HttpServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(proxyrsp.body)
 }
 
-func NewHttpServer(addr string, protc ProtoType, tls string) *HttpServer {
+func NewHttpServer(addr string, protc ProtoType, tls TlsConfig) *HttpServer {
 	proxy := new(HttpServer)
 	proxy.Address = addr
 
@@ -175,7 +179,7 @@ func NewHttpServer(addr string, protc ProtoType, tls string) *HttpServer {
 
 	log.Printf("Http Proxy Listen %s\r\n", addr)
 
-	tlsconfig, err := TlsConfigServerGet(tls)
+	tlsconfig, err := TlsConfigServer(tls)
 	if err != nil {
 		log.Println(err.Error())
 		return nil

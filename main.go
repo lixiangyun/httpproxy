@@ -23,9 +23,10 @@ func main() {
 
 	flag.Parse()
 
-	err := LoadConfig("./config.yaml")
+	_, err := LoadConfig("./config.yaml")
 	if err != nil {
 		log.Fatalln(err.Error())
+		return
 	}
 
 }

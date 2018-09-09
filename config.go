@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io/ioutil"
 
 	"gopkg.in/yaml.v2"
@@ -75,36 +76,92 @@ type RouterConfig struct {
 	Retry   RetryPolicy `yaml:"retry_policy"`
 }
 
-type ConfigV1 struct {
+type GlobalConfig struct {
 	Listeners []ListernerConfig `yaml:"listeners"`
 	Routers   []RouterConfig    `yaml:"router"`
 	TlsCfg    []TlsConfig       `yaml:"tls"`
 	Clusters  []ClusterConfig   `yaml:"clusters"`
 }
 
-var globalConfigV1 ConfigV1
-
-func LoadConfig(filename string) error {
+func LoadConfig(filename string) (*GlobalConfig, error) {
 
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = yaml.Unmarshal(body, &globalConfigV1)
+	config := new(GlobalConfig)
+	config.Listeners = make([]ListernerConfig, 0)
+	config.Routers = make([]RouterConfig, 0)
+	config.Clusters = make([]ClusterConfig, 0)
+	config.TlsCfg = make([]TlsConfig, 0)
+
+	err = yaml.Unmarshal(body, config)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	if !config.Verify() {
+		err := errors.New("This config is verity failed!")
+		return nil, err
+	}
+
+	return config, nil
+}
+
+func (c *GlobalConfig) Verify() bool {
+
+	return true
+}
+
+func (c *GlobalConfig) listenerGetAll() []ListernerConfig {
+	return c.Listeners
+}
+
+func (c *GlobalConfig) listenerGet(name string) *ListernerConfig {
+	for _, v := range c.Listeners {
+		if v.Name == name {
+			return &v
+		}
+	}
 	return nil
 }
 
-func init() {
+func (c *GlobalConfig) RouterGetAll() []RouterConfig {
+	return c.Routers
+}
 
-	globalConfigV1.Listeners = make([]ListernerConfig, 0)
-	globalConfigV1.Routers = make([]RouterConfig, 0)
-	globalConfigV1.Clusters = make([]ClusterConfig, 0)
-	globalConfigV1.TlsCfg = make([]TlsConfig, 0)
+func (c *GlobalConfig) RouterGet(name string) *RouterConfig {
+	for _, v := range c.Routers {
+		if v.Name == name {
+			return &v
+		}
+	}
+	return nil
+}
 
-	//log.Println(globalConfigV1)
+func (c *GlobalConfig) ClusterGetAll() []ClusterConfig {
+	return c.Clusters
+}
+
+func (c *GlobalConfig) ClusterGet(name string) *ClusterConfig {
+	for _, v := range c.Clusters {
+		if v.Name == name {
+			return &v
+		}
+	}
+	return nil
+}
+
+func (c *GlobalConfig) TlsGetAll() []TlsConfig {
+	return c.TlsCfg
+}
+
+func (c *GlobalConfig) TlsGet(name string) *TlsConfig {
+	for _, v := range c.TlsCfg {
+		if v.Name == name {
+			return &v
+		}
+	}
+	return nil
 }

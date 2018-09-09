@@ -3,42 +3,14 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"io/ioutil"
 )
 
-var globalTls map[string]TlsConfig
-
-func init() {
-	globalTls = make(map[string]TlsConfig, 0)
-}
-
-func TlsConfigUpdate(list []TlsConfig) {
-	for _, v := range list {
-		_, b := globalTls[v.Name]
-		if b == false {
-			globalTls[v.Name] = v
-		}
-	}
-}
-
-func TlsConfigClientGet(tls string, servername string) (*tls.Config, error) {
-
-	v, b := globalTls[tls]
-	if b == false {
-		return nil, errors.New("can't not found tls cfg " + tls)
-	}
-
+func TlsConfigClient(v TlsConfig, servername string) (*tls.Config, error) {
 	return ClientTlsConfig(v.CA, v.Cert, v.Key, servername)
 }
 
-func TlsConfigServerGet(tls string) (*tls.Config, error) {
-
-	v, b := globalTls[tls]
-	if b == false {
-		return nil, errors.New("can't not found tls cfg " + tls)
-	}
-
+func TlsConfigServer(v TlsConfig) (*tls.Config, error) {
 	return ServerTlsConfig(v.CA, v.Cert, v.Key)
 }
 

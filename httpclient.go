@@ -38,11 +38,11 @@ type HttpClient interface {
 	Do(ctx context.Context, req *http.Request) (*http.Response, error)
 }
 
-func NewHttpClient(server string, protc ProtoType, tls string) *http.Client {
+func NewHttpClient(server string, protc ProtoType, tls TlsConfig) *http.Client {
 
 	var transport http.RoundTripper
 
-	tlsconfig, err := TlsConfigClientGet(tls, server)
+	tlsconfig, err := TlsConfigClient(tls, server)
 	if err != nil {
 		return nil
 	}
