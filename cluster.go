@@ -1,5 +1,9 @@
 package main
 
+import (
+	"sync"
+)
+
 type ServerType struct {
 	Name    string
 	Version string
@@ -9,6 +13,9 @@ type Cluster struct {
 	Svc ServerType
 	Lb  LoadBalance
 	Cli map[string]*HttpClient
+
+	sync.WaitGroup
+	sync.RWMutex
 }
 
 func NewCluster(cfg ClusterConfig) *Cluster {
