@@ -38,13 +38,13 @@ clusters:
     - 127.0.0.1:1234
     protocol: http1/http2/auto
     tls: xxx
-    loadbalance: rr/random/hash/fast
+    loadbalance: rr/random
   - servername: abc
     version: 112
     endpoints:
     - 127.0.0.1:1234
     - 127.0.0.1:1234
-    loadbalance: rr/random/hash/fast
+    loadbalance: rr/random
     protocol: http1/http2/auto
     tls: xxx
 tls:

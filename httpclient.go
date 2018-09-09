@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"time"
 
@@ -34,17 +35,25 @@ type Http20Client struct {
 	*http.Client
 }
 
-type HttpClient interface {
-	Do(ctx context.Context, req *http.Request) (*http.Response, error)
+type HttpClient struct {
+	cli *http.Client
 }
 
-func NewHttpClient(server string, protc ProtoType, tls TlsConfig) *http.Client {
+func (h *HttpClient) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
+	return h.cli.Do(req)
+}
+
+func NewHttpClient(server string, protc string, cfg *TlsConfig) *HttpClient {
 
 	var transport http.RoundTripper
+	var tlsconfig *tls.Config
+	var err error
 
-	tlsconfig, err := TlsConfigClient(tls, server)
-	if err != nil {
-		return nil
+	if cfg != nil {
+		tlsconfig, err = TlsConfigClient(*cfg, server)
+		if err != nil {
+			return nil
+		}
 	}
 
 	if protc == PROTO_HTTP {
@@ -53,8 +62,10 @@ func NewHttpClient(server string, protc ProtoType, tls TlsConfig) *http.Client {
 		transport = &http2.Transport{TLSClientConfig: tlsconfig}
 	}
 
-	return &http.Client{
+	cli := &http.Client{
 		Transport: transport,
 		Timeout:   10 * time.Second,
 	}
+
+	return &HttpClient{cli: cli}
 }

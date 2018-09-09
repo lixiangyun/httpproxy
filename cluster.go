@@ -5,13 +5,31 @@ type ServerType struct {
 	Version string
 }
 
-type ClusterCtl struct {
+type Cluster struct {
 	Svc ServerType
-	Add []string
 	Lb  LoadBalance
-	Tls TlsConfig
+	Cli map[string]*HttpClient
 }
 
-func ClusterCfgUpdate(list []ClusterConfig) {
+func NewCluster(cfg ClusterConfig) *Cluster {
 
+	lb := NewLB(cfg.LBType, cfg.Endpoint)
+	svc := ServerType{Name: cfg.Name, Version: cfg.Version}
+	tlscfg := globalconfig.TlsGet(cfg.TlsName)
+	cli := make(map[string]*HttpClient, len(cfg.Endpoint))
+
+	for _, v := range cfg.Endpoint {
+		cli[v] = NewHttpClient(cfg.Name, cfg.Protocal, tlscfg)
+	}
+
+	return &Cluster{Svc: svc, Lb: lb, Cli: cli}
+}
+
+func (c *Cluster) Close() {
+
+}
+
+func (c *Cluster) Do(req *HttpRequest) *HttpRsponse {
+
+	return nil
 }

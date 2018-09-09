@@ -18,7 +18,7 @@ import (
 type HttpServer struct {
 	Name      string
 	Address   string
-	Protocal  ProtoType
+	Protocal  string
 	Router    Router
 	TlsConfig *tls.Config
 
@@ -167,7 +167,7 @@ func (h *HttpServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(proxyrsp.body)
 }
 
-func NewHttpServer(addr string, protc ProtoType, tls TlsConfig) *HttpServer {
+func NewHttpServer(addr string, protc string, tls TlsConfig) *HttpServer {
 	proxy := new(HttpServer)
 	proxy.Address = addr
 

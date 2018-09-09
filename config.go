@@ -7,8 +7,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type ProtoType string
-
 const (
 	PROTO_HTTP  = "http"
 	PROTO_HTTP2 = "http2"
@@ -16,11 +14,11 @@ const (
 )
 
 type ListernerConfig struct {
-	Name     string    `yaml:"name"`
-	Address  string    `yaml:address`
-	Protocal ProtoType `yaml:protocol`
-	Router   string    `yaml:router`
-	TlsName  string    `yaml:tls`
+	Name     string `yaml:"name"`
+	Address  string `yaml:address`
+	Protocal string `yaml:protocol`
+	Router   string `yaml:router`
+	TlsName  string `yaml:tls`
 }
 
 type MatchType string
@@ -43,15 +41,13 @@ type RetryPolicy struct {
 	Timeout int  `yaml:"try_timeout"`
 }
 
-type LoadBalanceType string
-
 type ClusterConfig struct {
-	Name     string          `yaml:"servername"`
-	Version  string          `yaml:"version"`
-	Endpoint []string        `yaml:"endpoints"`
-	Protocal ProtoType       `yaml:"protocol"`
-	TlsName  string          `yaml:"tls"`
-	LBType   LoadBalanceType `yaml:"loadbalance"`
+	Name     string   `yaml:"servername"`
+	Version  string   `yaml:"version"`
+	Endpoint []string `yaml:"endpoints"`
+	Protocal string   `yaml:"protocol"`
+	TlsName  string   `yaml:"tls"`
+	LBType   string   `yaml:"loadbalance"`
 }
 
 type TlsConfig struct {
@@ -83,6 +79,8 @@ type GlobalConfig struct {
 	Clusters  []ClusterConfig   `yaml:"clusters"`
 }
 
+var globalconfig *GlobalConfig
+
 func LoadConfig(filename string) (*GlobalConfig, error) {
 
 	body, err := ioutil.ReadFile(filename)
@@ -105,6 +103,8 @@ func LoadConfig(filename string) (*GlobalConfig, error) {
 		err := errors.New("This config is verity failed!")
 		return nil, err
 	}
+
+	globalconfig = config
 
 	return config, nil
 }
