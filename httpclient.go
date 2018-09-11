@@ -19,7 +19,6 @@ type HttpRsponse struct {
 
 type HttpRequest struct {
 	num    int32
-	addr   string
 	url    string
 	method string
 	header http.Header

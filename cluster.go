@@ -38,7 +38,14 @@ func (cluster *Cluster) ClusterProcess(address, proto string) {
 			{
 				proxyrsp := new(HttpRsponse)
 
-				request, err := http.NewRequest(proxyreq.method,
+				if cluster.Tls != nil {
+					proxyreq.url = "https://" + address + proxyreq.url
+				} else {
+					proxyreq.url = "http://" + address + proxyreq.url
+				}
+
+				request, err := http.NewRequest(
+					proxyreq.method,
 					proxyreq.url,
 					bytes.NewBuffer(proxyreq.body))
 
@@ -110,22 +117,18 @@ func NewCluster(cfg ClusterConfig) *Cluster {
 }
 
 func (cluster *Cluster) Close() {
-
 	num := cluster.GoNum
 	for i := 0; i < num; i++ {
 		cluster.Stop <- struct{}{}
 	}
-
 	cluster.Wait()
 }
 
 func (cluster *Cluster) Do(req *HttpRequest) *HttpRsponse {
-
 	var proxyrsp *HttpRsponse
 
 	for {
 		address := cluster.Lb.Pick()
-
 		requestque := cluster.Que[address]
 		requestque <- req
 

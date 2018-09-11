@@ -36,18 +36,14 @@ func (h *HttpServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	defer req.Body.Close()
 
-	//redirect := h.Fun()
-	var redirect string
-
 	// step 1
 	proxyreq := new(HttpRequest)
 	proxyreq.num = atomic.AddInt32(&requestNum, 1)
-	proxyreq.addr = redirect
 	proxyreq.method = req.Method
 	proxyreq.header = req.Header
 	proxyreq.rsp = make(chan *HttpRsponse, 1)
 
-	proxyreq.url = redirect + req.URL.RequestURI() // need + "https://"
+	proxyreq.url = req.URL.RequestURI()
 
 	proxyreq.body, err = ioutil.ReadAll(req.Body)
 	if err != nil {
