@@ -5,8 +5,6 @@ import (
 	"log"
 )
 
-var requestNum int32
-
 var (
 	CONFIG_FILE string
 	DEBUG       bool
@@ -20,7 +18,6 @@ func init() {
 }
 
 func main() {
-
 	flag.Parse()
 
 	_, err := LoadConfig("./config.yaml")
@@ -28,5 +25,9 @@ func main() {
 		log.Fatalln(err.Error())
 		return
 	}
+
+	RouterInit()
+	ClusterInit()
+	ListenerInit()
 
 }

@@ -15,17 +15,21 @@ import (
 	"golang.org/x/net/http2"
 )
 
+var requestNum int32
+
+type HttpProxyHandler func(*HttpRequest) *HttpRsponse
+
 type HttpServer struct {
 	Name      string
 	Address   string
 	Protocal  string
-	Router    Router
 	TlsConfig *tls.Config
+
+	Func HttpProxyHandler
 
 	Svc *http.Server
 
 	GoCnt int
-	Que   chan *HttpRequest
 	Wait  sync.WaitGroup
 	Stop  chan struct{}
 }
@@ -65,8 +69,7 @@ func (h *HttpServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			proxyreq.num, proxyreq.method, proxyreq.url, headers, body)
 	}
 
-	h.Que <- proxyreq
-	proxyrsp := <-proxyreq.rsp
+	proxyrsp := h.Func(proxyreq)
 
 	if DEBUG {
 		headers := fmt.Sprintf("\r\nHeader:\r\n")
@@ -99,7 +102,8 @@ func (h *HttpServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(proxyrsp.body)
 }
 
-func NewHttpServer(addr string, protc string, tls TlsConfig) *HttpServer {
+func NewHttpServer(addr string, protc string, tlscfg *TlsConfig) *HttpServer {
+
 	proxy := new(HttpServer)
 	proxy.Address = addr
 
@@ -111,10 +115,13 @@ func NewHttpServer(addr string, protc string, tls TlsConfig) *HttpServer {
 
 	log.Printf("Http Proxy Listen %s\r\n", addr)
 
-	tlsconfig, err := TlsConfigServer(tls)
-	if err != nil {
-		log.Println(err.Error())
-		return nil
+	var tlsconfig *tls.Config
+	if tlscfg != nil {
+		tlsconfig, err = TlsConfigServer(tlscfg)
+		if err != nil {
+			log.Println(err.Error())
+			return nil
+		}
 	}
 
 	proxy.Svc = &http.Server{
@@ -134,6 +141,10 @@ func NewHttpServer(addr string, protc string, tls TlsConfig) *HttpServer {
 	}
 
 	return proxy
+}
+
+func (h *HttpServer) FuncHandler(fun HttpProxyHandler) {
+	h.Func = fun
 }
 
 func (h *HttpServer) Close() {

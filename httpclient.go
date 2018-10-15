@@ -26,14 +26,6 @@ type HttpRequest struct {
 	rsp    chan *HttpRsponse
 }
 
-type Http11Client struct {
-	*http.Client
-}
-
-type Http20Client struct {
-	*http.Client
-}
-
 type HttpClient struct {
 	cli *http.Client
 }
@@ -49,7 +41,7 @@ func NewHttpClient(server string, protc string, cfg *TlsConfig) *HttpClient {
 	var err error
 
 	if cfg != nil {
-		tlsconfig, err = TlsConfigClient(*cfg, server)
+		tlsconfig, err = TlsConfigClient(cfg, server)
 		if err != nil {
 			return nil
 		}

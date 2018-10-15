@@ -6,11 +6,11 @@ import (
 	"io/ioutil"
 )
 
-func TlsConfigClient(v TlsConfig, servername string) (*tls.Config, error) {
+func TlsConfigClient(v *TlsConfig, servername string) (*tls.Config, error) {
 	return ClientTlsConfig(v.CA, v.Cert, v.Key, servername)
 }
 
-func TlsConfigServer(v TlsConfig) (*tls.Config, error) {
+func TlsConfigServer(v *TlsConfig) (*tls.Config, error) {
 	return ServerTlsConfig(v.CA, v.Cert, v.Key)
 }
 

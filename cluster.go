@@ -26,6 +26,8 @@ type Cluster struct {
 	sync.RWMutex
 }
 
+var globalClusterList map[string]*Cluster
+
 func (cluster *Cluster) ClusterProcess(address, proto string) {
 	defer cluster.Done()
 
@@ -142,4 +144,18 @@ func (cluster *Cluster) Do(req *HttpRequest) *HttpRsponse {
 	}
 
 	return proxyrsp
+}
+
+func ClusterInit() {
+	clusterCfg := globalconfig.ClusterGetAll()
+	for _, v := range clusterCfg {
+		cluster := NewCluster(v)
+
+		globalClusterList[v.Name] = cluster
+	}
+}
+
+func ClusterProcess(name string, req *HttpRequest) *HttpRsponse {
+
+	return new(HttpRsponse)
 }
