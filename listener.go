@@ -16,19 +16,17 @@ func init() {
 }
 
 func (l *Listener) ListenerProcess(rep *HttpRequest) *HttpRsponse {
-
 	cluster, err := RouterProcess(l.router, rep)
 	if err != nil {
 		log.Println(err.Error())
 		return nil
 	}
-
-	return ClusterProcess(cluster, rep)
+	return ClusterProcess(*cluster, rep)
 }
 
 func ListenerInit() {
-
 	listennerCfg := globalconfig.listenerGetAll()
+
 	for _, v := range listennerCfg {
 
 		listener := new(Listener)
@@ -46,5 +44,7 @@ func ListenerInit() {
 		}
 
 		listener.httpsvc.FuncHandler(listener.ListenerProcess)
+
+		globalListAll[v.Name] = listener
 	}
 }

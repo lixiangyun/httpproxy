@@ -57,13 +57,11 @@ type TlsConfig struct {
 	CA   string `yaml:"ca_cert_file"`
 }
 
-type RouterType string
-
 type RouterConfig struct {
-	Name  string     `yaml:"name"`
-	Prior int        `yaml:"priority"`
-	Type  RouterType `yaml:"rule_type"`
-	Value string     `yaml:"rule_value"`
+	Name  string    `yaml:"name"`
+	Prior int       `yaml:"priority"`
+	Type  MatchType `yaml:"rule_type"`
+	Value string    `yaml:"rule_value"`
 
 	Headers  []Header      `yaml:"headers"`
 	Clusters []DestCluster `yaml:"clusters"`

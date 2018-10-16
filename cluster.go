@@ -26,7 +26,7 @@ type Cluster struct {
 	sync.RWMutex
 }
 
-var globalClusterList map[string]*Cluster
+var globalClusterList map[ServerType]*Cluster
 
 func (cluster *Cluster) ClusterProcess(address, proto string) {
 	defer cluster.Done()
@@ -99,6 +99,7 @@ func (cluster *Cluster) ClusterProcess(address, proto string) {
 }
 
 func NewCluster(cfg ClusterConfig) *Cluster {
+
 	lb := NewLB(cfg.LBType, cfg.Endpoint)
 	svc := ServerType{Name: cfg.Name, Version: cfg.Version}
 	tlscfg := globalconfig.TlsGet(cfg.TlsName)
@@ -150,12 +151,18 @@ func ClusterInit() {
 	clusterCfg := globalconfig.ClusterGetAll()
 	for _, v := range clusterCfg {
 		cluster := NewCluster(v)
-
-		globalClusterList[v.Name] = cluster
+		if cluster == nil {
+			log.Fatal("cluster init failed!")
+		}
+		svc := ServerType{Name: v.Name, Version: v.Version}
+		globalClusterList[svc] = cluster
 	}
 }
 
-func ClusterProcess(name string, req *HttpRequest) *HttpRsponse {
-
-	return new(HttpRsponse)
+func ClusterProcess(svc ServerType, req *HttpRequest) *HttpRsponse {
+	cluster, b := globalClusterList[svc]
+	if b == false {
+		return nil
+	}
+	return cluster.Do(req)
 }

@@ -12,7 +12,7 @@ listeners:
 router:
   - name: 1234
     priority: 1
-    rule_type: prefix/path/regex
+    rule_type: regex/prefix/equal
     rule_value: xxxx
     headers:
       - key: abc
