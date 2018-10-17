@@ -15,6 +15,10 @@ type Router struct {
 
 var globalRouterAll map[string]*Router
 
+func init() {
+	globalRouterAll = make(map[string]*Router, 0)
+}
+
 func NewRouter(cfg RouterConfig) *Router {
 	router := new(Router)
 

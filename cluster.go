@@ -28,6 +28,10 @@ type Cluster struct {
 
 var globalClusterList map[ServerType]*Cluster
 
+func init() {
+	globalClusterList = make(map[ServerType]*Cluster, 0)
+}
+
 func (cluster *Cluster) ClusterProcess(address, proto string) {
 	defer cluster.Done()
 

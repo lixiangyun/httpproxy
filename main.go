@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"time"
 )
 
 var (
@@ -30,4 +31,7 @@ func main() {
 	ClusterInit()
 	ListenerInit()
 
+	for {
+		time.Sleep(time.Second)
+	}
 }
