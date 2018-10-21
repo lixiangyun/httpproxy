@@ -15,10 +15,10 @@ const (
 
 type ListernerConfig struct {
 	Name     string `yaml:"name"`
-	Address  string `yaml:address`
-	Protocal string `yaml:protocol`
-	Router   string `yaml:router`
-	TlsName  string `yaml:tls`
+	Address  string `yaml:"address"`
+	Protocal string `yaml:"protocol"`
+	Router   string `yaml:"router"`
+	TlsName  string `yaml:"tls"`
 }
 
 type MatchType string

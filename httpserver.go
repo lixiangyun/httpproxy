@@ -113,7 +113,7 @@ func NewHttpServer(addr string, protc string, tlscfg *TlsConfig) *HttpServer {
 		return nil
 	}
 
-	log.Printf("Http Proxy Listen %s\r\n", addr)
+	log.Printf("Listen [%s] Protc [%s]\r\n", addr, protc)
 
 	var tlsconfig *tls.Config
 	if tlscfg != nil {

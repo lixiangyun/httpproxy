@@ -1,43 +1,18 @@
 listeners:
   - name: ingress
-    address: 0.0.0.0:8001
-    protocol: http1
+    address: 0.0.0.0:8000
+    protocol: http
     router: ingress_router
-    tls: tls_server_ctx
-  - name: outgress
-    address: 127.0.0.1:15000
-    protocol: http1
-    router: outgress_router
 router:
   - name: ingress_router
     priority: 1
     rule_type: prefix
     rule_value: /
-    headers:
-      - key: abc
-        type: regex/prefix/equal
-        value: asdfasdf
     clusters:
-      - servername: abc
-        weight: 80
-        version: 111
-      - servername: abc
-        weight: 20
-        version: 112
-    timeout: 5000
-    retry_policy:
-      retry_on: true
-      num_retries: 5
-      try_timeout: 1000
-  - name: outgress_router
-    priority: 1
-    rule_type: prefix
-    rule_value: /
-    clusters:
-      - servername: demo1
+      - servername: demo_server
         weight: 80
         version: v1
-      - servername: demo1
+      - servername: demo_server
         weight: 20
         version: v2
     timeout: 5000
@@ -46,34 +21,17 @@ router:
       num_retries: 5
       try_timeout: 1000
 clusters:
-  - servername: demo1
+  - servername: demo_server
     version: v1
     endpoints:
-    - 127.0.0.1:1001
-    protocol: http1
-    tls: tls_client_ctx
+    - 127.0.0.1:8001
+    - 127.0.0.1:8002
+    protocol: http
     loadbalance: rr
-  - servername: demo1
+  - servername: demo_server
     version: v2
     endpoints:
-    - 127.0.0.1:1002
-    protocol: auto
-    tls: tls_client_ctx
+    - 127.0.0.1:8003
+    - 127.0.0.1:8004
+    protocol: http
     loadbalance: rr
-  - servername: demo2
-    version: v2
-    endpoints:
-    - 127.0.0.1:2001
-    - 127.0.0.1:2002
-    loadbalance: random
-    protocol: http1
-    tls: tls_client_ctx
-tls:
-  - name: tls_client_ctx
-    cert_chain_file: ./cert/client.crt
-    private_key_file: ./cert/client.pem
-    ca_cert_file: ./cert/ca.crt
-  - name: tls_server_ctx
-    cert_chain_file: ./cert/server.crt
-    private_key_file: ./cert/server.pem
-    ca_cert_file: ./cert/ca.crt
