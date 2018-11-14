@@ -19,9 +19,15 @@ func init() {
 }
 
 func main() {
+
 	flag.Parse()
 
-	_, err := LoadConfig("./config.yaml")
+	if HELP {
+		flag.Usage()
+		return
+	}
+
+	_, err := LoadConfig(CONFIG_FILE)
 	if err != nil {
 		log.Fatalln(err.Error())
 		return
